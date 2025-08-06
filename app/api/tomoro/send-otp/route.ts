@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Generate random device code
-const generateRandomDeviceCode = (): string => {
-  return Math.random().toString(16).substring(2, 18);
-};
-
 // Generate random wToken
 const generateWToken = (): string => {
   const baseTokens = [
@@ -54,6 +49,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const phone = searchParams.get("phone");
+    const existingDeviceCode = searchParams.get("deviceCode");
 
     if (!phone) {
       return NextResponse.json(
@@ -62,8 +58,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Generate session identifiers - consistent per registration flow
-    const deviceCode = generateRandomDeviceCode();
+    if (!existingDeviceCode) {
+      return NextResponse.json(
+        { success: false, msg: "Device code is required" },
+        { status: 400 }
+      );
+    }
+
+    // Use existing deviceCode, only generate wToken and userAgent for this session
+    const deviceCode = existingDeviceCode;
     const wToken = generateWToken();
     const userAgent = generateUserAgent();
 

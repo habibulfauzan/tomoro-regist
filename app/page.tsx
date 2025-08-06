@@ -33,10 +33,13 @@ const createMD5Hash = (input: string): string => {
 };
 
 // API functions
-const sendOtp = async (phoneNum: string) => {
-  const response = await fetch(`/api/tomoro/send-otp?phone=${phoneNum}`, {
-    method: "GET",
-  });
+const sendOtp = async (phoneNum: string, deviceCode: string) => {
+  const response = await fetch(
+    `/api/tomoro/send-otp?phone=${phoneNum}&deviceCode=${deviceCode}`,
+    {
+      method: "GET",
+    }
+  );
 
   if (!response.ok) {
     throw new Error("Failed to send OTP");
@@ -76,6 +79,8 @@ const loginOrRegister = async (
 const setPassword = async (
   deviceCode: string,
   token: string,
+  wToken: string,
+  userAgent: string,
   md5pass: string
 ) => {
   const response = await fetch("/api/tomoro/set-password", {
@@ -87,6 +92,8 @@ const setPassword = async (
       password: md5pass,
       deviceCode,
       token,
+      wToken,
+      userAgent,
     }),
   });
 
@@ -164,10 +171,17 @@ export default function TomoroRegister() {
   const [token, setToken] = useState("");
   const [accountCode, setAccountCode] = useState("");
 
-  // Generate device code on client side only to prevent hydration mismatch
+  // Generate device code once on client side only to prevent hydration mismatch
   useEffect(() => {
-    setDeviceCode(generateRandomString());
-  }, []);
+    // Only generate if deviceCode is empty (prevents regeneration on re-mount)
+    if (!deviceCode) {
+      const newDeviceCode = generateRandomString();
+      setDeviceCode(newDeviceCode);
+      console.log(
+        `🎯 Initial device code generated: ${newDeviceCode.substring(0, 8)}...`
+      );
+    }
+  }, [deviceCode]);
 
   // Auto-submit functions
   const handleOtpAutoSubmit = useCallback(async () => {
@@ -229,7 +243,7 @@ export default function TomoroRegister() {
 
     try {
       const md5pass = createMD5Hash(pinCode);
-      await setPassword(deviceCode, token, md5pass);
+      await setPassword(deviceCode, token, wToken, userAgent, md5pass);
 
       const result: RegistrationResult = {
         phoneNum,
@@ -246,7 +260,7 @@ export default function TomoroRegister() {
     } finally {
       setLoading(false);
     }
-  }, [pinCode, deviceCode, token, phoneNum, accountCode]);
+  }, [pinCode, deviceCode, token, wToken, userAgent, phoneNum, accountCode]);
 
   // Auto-submit OTP when complete
   useEffect(() => {
@@ -294,14 +308,13 @@ export default function TomoroRegister() {
     setError("");
 
     try {
-      const result = await sendOtp(phoneNum);
+      const result = await sendOtp(phoneNum, deviceCode);
 
       if (result.success === false) {
         throw new Error(result.msg || "Failed to send OTP");
       }
 
-      // Store session identifiers for consistent flow
-      setDeviceCode(result.deviceCode);
+      // Store wToken and userAgent for this session (deviceCode stays the same)
       setWToken(result.wToken);
       setUserAgent(result.userAgent);
 
@@ -380,7 +393,7 @@ export default function TomoroRegister() {
 
     try {
       const md5pass = createMD5Hash(pinCode);
-      await setPassword(deviceCode, token, md5pass);
+      await setPassword(deviceCode, token, wToken, userAgent, md5pass);
 
       const result: RegistrationResult = {
         phoneNum,
@@ -464,6 +477,7 @@ export default function TomoroRegister() {
           <h1 className="text-3xl font-bold text-amber-800 mb-2">
             T****o Auto Register
           </h1>
+
           {/* <p className="text-gray-600">Daftar akun baru dengan mudah</p> */}
           {deviceCode && (
             <div className="mt-4 text-sm text-gray-500">
