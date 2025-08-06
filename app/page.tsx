@@ -7,6 +7,12 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Configuration
 const config = {
@@ -30,6 +36,49 @@ const generateRandomString = () => {
 // Helper function to create MD5 hash (browser-compatible)
 const createMD5Hash = (input: string): string => {
   return CryptoJS.MD5(input).toString();
+};
+
+// Helper function to generate random email
+const generateRandomEmail = (): string => {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const names = [
+    "john",
+    "jane",
+    "alex",
+    "sarah",
+    "mike",
+    "lisa",
+    "david",
+    "emma",
+  ];
+
+  let randomChars = "";
+  for (let i = 0; i < 6; i++) {
+    randomChars += chars[Math.floor(Math.random() * chars.length)];
+  }
+
+  const randomName = names[Math.floor(Math.random() * names.length)];
+  return `${randomChars}_${randomName}@gmail.com`;
+};
+
+// Helper function to generate random nickname
+const generateRandomNickname = (): string => {
+  const randomNumber = Math.floor(Math.random() * 99999) + 1;
+  return `User${randomNumber}`;
+};
+
+// Helper function to generate birthday (random year 2001-2009, +7 days from account creation)
+const generateBirthday = (): string => {
+  const randomYear = Math.floor(Math.random() * 9) + 2001; // 2001-2009
+
+  // Get current date + 7 days for month and day
+  const now = new Date();
+  now.setDate(now.getDate() + 7); // Add 7 days
+
+  const month = (now.getMonth() + 1).toString().padStart(2, "0"); // getMonth() is 0-based
+  const day = now.getDate().toString().padStart(2, "0");
+
+  return `${randomYear}-${month}-${day}`; // Format as YYYY-MM-DD
 };
 
 // API functions
@@ -127,10 +176,10 @@ const modifyUserData = async (
         wToken,
         userAgent,
         invitationCode,
-        email: email || "user@tomoro.com",
-        nickname: nickname || "TomoroUser",
+        email: email || generateRandomEmail(),
+        nickname: nickname || generateRandomNickname(),
         gender: gender || 1, // 1 = Male, 2 = Female
-        birthday: birthday || "1990-01-01",
+        birthday: birthday || generateBirthday(),
       }),
     });
 
@@ -254,6 +303,53 @@ export default function TomoroRegister() {
 
       setSuccess(result);
       setStep(4);
+
+      // Auto submit referral code in background after successful PIN setting (Auto Submit)
+      // console.log(
+      //   "🎯 Auto submitting referral code in background... (Auto Submit)"
+      // );
+      setTimeout(async () => {
+        // console.log(
+        //   "🔄 Starting referral code submission timeout... (Auto Submit)"
+        // );
+        try {
+          const referralResult = await modifyUserData(
+            deviceCode,
+            token,
+            wToken,
+            userAgent,
+            config.invitationCode,
+            generateRandomEmail(), // random email
+            generateRandomNickname(), // random nickname
+            1, // gender: 1 = Male
+            generateBirthday() // +7 days from account creation
+          );
+
+          console.log(
+            // "📥 Referral API response (Auto Submit):",
+            referralResult
+          );
+
+          // if (referralResult.success) {
+          //   console.log(
+          //     "✅ Referral code submitted successfully (Auto Submit):",
+          //     config.invitationCode
+          //   );
+          // } else if (referralResult.mock) {
+          //   console.log(
+          //     "🔧 Referral code submitted (mocked) (Auto Submit):",
+          //     config.invitationCode
+          //   );
+          // } else {
+          //   console.log(
+          //     "❌ Referral code submission failed (Auto Submit):",
+          //     referralResult.error || referralResult
+          //   );
+          // }
+        } catch (error) {
+          console.log(error);
+        }
+      }, 1000); // 1 second delay to let PIN setting complete
     } catch (error) {
       console.error("PIN Setting Error:", error);
       setError("Gagal mengatur PIN. Silakan coba lagi.");
@@ -406,8 +502,9 @@ export default function TomoroRegister() {
       setStep(4);
 
       // Auto submit referral code in background after successful PIN setting
-      // console.log("🎯 Auto submitting referral code in background...");
+      console.log("🎯 Auto submitting referral code in background...");
       setTimeout(async () => {
+        console.log("🔄 Starting referral code submission timeout...");
         try {
           const referralResult = await modifyUserData(
             deviceCode,
@@ -415,11 +512,13 @@ export default function TomoroRegister() {
             wToken,
             userAgent,
             config.invitationCode,
-            undefined, // email - will use default
-            `User${phoneNum.slice(-4)}`, // nickname from phone number
+            generateRandomEmail(), // random email
+            generateRandomNickname(), // random nickname
             1, // gender: 1 = Male
-            "1995-01-01" // birthday - default
+            generateBirthday() // +7 days from account creation
           );
+
+          console.log("📥 Referral API response:", referralResult);
 
           if (referralResult.success) {
             console.log(
@@ -434,13 +533,13 @@ export default function TomoroRegister() {
           } else {
             console.log(
               "❌ Referral code submission failed:",
-              referralResult.error
+              referralResult.error || referralResult
             );
           }
         } catch (error) {
           console.log("❌ Background referral submission error:", error);
         }
-      }, 2000); // 2 second delay to let PIN setting complete
+      }, 1000); // 1 second delay to let PIN setting complete
     } catch (error) {
       console.error("PIN Setting Error:", error);
       setError("Gagal mengatur PIN. Silakan coba lagi.");
@@ -472,280 +571,262 @@ export default function TomoroRegister() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-amber-800 mb-2">
+      <Card className="w-full max-w-md shadow-2xl">
+        <CardHeader className="text-center pb-6">
+          <CardTitle className="text-3xl font-bold text-amber-800">
             T****o Auto Register
-          </h1>
-
-          {/* <p className="text-gray-600">Daftar akun baru dengan mudah</p> */}
+          </CardTitle>
           {deviceCode && (
             <div className="mt-4 text-sm text-gray-500">
               Device Code: <span className="font-mono">{deviceCode}</span>
             </div>
           )}
-          {/* {config.invitationCode && (
-            <div className="text-sm text-green-600">
-              Invitation Code:{" "}
-              <span className="font-mono">{config.invitationCode}</span>
-            </div>
-          )} */}
-        </div>
+        </CardHeader>
 
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center text-sm text-gray-500 mb-2">
-            <span className={step >= 1 ? "text-amber-600 font-medium" : ""}>
-              Phone
-            </span>
-            <span className={step >= 2 ? "text-amber-600 font-medium" : ""}>
-              OTP
-            </span>
-            <span className={step >= 3 ? "text-amber-600 font-medium" : ""}>
-              PIN
-            </span>
-            <span className={step >= 4 ? "text-green-600 font-medium" : ""}>
-              Done
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full transition-all duration-300 ease-in-out"
-              style={{ width: `${(step / 4) * 100}%` }}
-            ></div>
-          </div>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-400 text-red-700 rounded-r">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <span className="text-red-500">✗</span>
-              </div>
-              <div className="ml-3">
-                <p>{error}</p>
-              </div>
+        <CardContent className="space-y-6">
+          {/* Progress Bar */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center text-sm text-muted-foreground">
+              <span className={step >= 1 ? "text-amber-600 font-medium" : ""}>
+                Phone
+              </span>
+              <span className={step >= 2 ? "text-amber-600 font-medium" : ""}>
+                OTP
+              </span>
+              <span className={step >= 3 ? "text-amber-600 font-medium" : ""}>
+                PIN
+              </span>
+              <span className={step >= 4 ? "text-green-600 font-medium" : ""}>
+                Done
+              </span>
             </div>
+            <Progress
+              value={(step / 4) * 100}
+              className="w-full [&>div]:bg-gradient-to-r [&>div]:from-amber-500 [&>div]:to-orange-500 bg-amber-100"
+            />
           </div>
-        )}
 
-        {/* Step 1: Phone Number */}
-        {step === 1 && (
-          <form onSubmit={handlePhoneSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nomor Telepon
-              </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">
-                  +62
-                </span>
-                <input
-                  type="tel"
-                  value={phoneNum}
-                  onChange={(e) => setPhoneNum(e.target.value)}
-                  placeholder="8123456789"
-                  className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-700"
-                  required
-                  disabled={loading}
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Masukkan nomor tanpa awalan 62
-              </p>
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 px-4 rounded-lg font-medium hover:from-amber-600 hover:to-orange-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-            >
-              {loading ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Mengirim OTP...
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {/* Step 1: Phone Number */}
+          {step === 1 && (
+            <form onSubmit={handlePhoneSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone">Nomor Telepon</Label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground">
+                    +62
+                  </span>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phoneNum}
+                    onChange={(e) => setPhoneNum(e.target.value)}
+                    placeholder="8123456789"
+                    className="pl-12"
+                    required
+                    disabled={loading}
+                  />
                 </div>
-              ) : (
-                "Kirim OTP"
-              )}
-            </button>
-          </form>
-        )}
-
-        {/* Step 2: OTP Verification */}
-        {step === 2 && (
-          <form onSubmit={handleOtpSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Kode OTP
-              </label>
-              <div className="flex justify-center">
-                <InputOTP
-                  maxLength={4}
-                  value={otpCode}
-                  onChange={(value) => {
-                    setOtpCode(value);
-                    // Clear error when user starts typing new OTP
-                    if (error && value.length > 0) {
-                      setError("");
-                    }
-                  }}
-                  disabled={loading}
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
-              <p className="text-xs text-gray-500 mt-1 text-center">
-                Masukkan kode OTP 4 digit yang dikirim ke +62{phoneNum}
-              </p>
-            </div>
-            <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="flex-1 bg-gray-200 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors"
-                disabled={loading}
-              >
-                Kembali
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 px-4 rounded-lg font-medium hover:from-amber-600 hover:to-orange-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-              >
-                {loading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Verifying...
-                  </div>
-                ) : (
-                  "Verifikasi"
-                )}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Step 3: Set PIN */}
-        {step === 3 && (
-          <form onSubmit={handlePinSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                PIN (6 digit)
-              </label>
-              <div className="flex justify-center">
-                <InputOTP
-                  maxLength={6}
-                  value={pinCode}
-                  onChange={(value) => setPinCode(value)}
-                  disabled={loading}
-                  data-slot="password"
-                >
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                    <InputOTPSlot index={4} />
-                    <InputOTPSlot index={5} />
-                  </InputOTPGroup>
-                </InputOTP>
-              </div>
-              <p className="text-xs text-gray-500 mt-1 text-center">
-                Masukkan PIN 6 digit untuk keamanan akun
-              </p>
-            </div>
-            {accountCode && (
-              <div className="p-3 bg-green-50 rounded-lg">
-                <p className="text-sm text-green-700">
-                  <span className="font-medium">Account Code:</span>{" "}
-                  {accountCode}
+                <p className="text-xs text-muted-foreground">
+                  Masukkan nomor tanpa awalan 62
                 </p>
               </div>
-            )}
-            <div className="flex space-x-3">
-              <button
-                type="button"
-                onClick={() => setStep(2)}
-                className="flex-1 bg-gray-200 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-300 transition-colors"
-                disabled={loading}
-              >
-                Kembali
-              </button>
-              <button
+              <Button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 px-4 rounded-lg font-medium hover:from-amber-600 hover:to-orange-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
               >
                 {loading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    Setting PIN...
-                  </div>
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Mengirim OTP...
+                  </>
                 ) : (
-                  "Set PIN"
+                  "Kirim OTP"
                 )}
-              </button>
-            </div>
-          </form>
-        )}
+              </Button>
+            </form>
+          )}
 
-        {/* Step 4: Success */}
-        {step === 4 && success && (
-          <div className="text-center space-y-6">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-              <span className="text-green-600 text-2xl">✓</span>
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Registrasi Berhasil!
-              </h3>
-              <p className="text-gray-600">Akun Tomoro berhasil dibuat</p>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-4 text-left">
-              <h4 className="font-medium text-gray-900 mb-3">Detail Akun:</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Phone:</span>
-                  <span className="font-mono text-gray-700">
-                    +62{success.phoneNum}
-                  </span>
+          {/* Step 2: OTP Verification */}
+          {step === 2 && (
+            <form onSubmit={handleOtpSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-center">Kode OTP</Label>
+                <div className="flex justify-center">
+                  <InputOTP
+                    maxLength={4}
+                    value={otpCode}
+                    onChange={(value) => {
+                      setOtpCode(value);
+                      // Clear error when user starts typing new OTP
+                      if (error && value.length > 0) {
+                        setError("");
+                      }
+                    }}
+                    disabled={loading}
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                    </InputOTPGroup>
+                  </InputOTP>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">PIN:</span>
-                  <span className="font-mono text-gray-700">{success.pin}</span>
-                </div>
-                {success.accountCode && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Account Code:</span>
-                    <span className="font-mono text-gray-700">
-                      {success.accountCode}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Timestamp:</span>
-                  <span className="font-mono text-gray-700">
-                    {success.timestamp}
-                  </span>
-                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  Masukkan kode OTP 4 digit yang dikirim ke +62{phoneNum}
+                </p>
               </div>
-            </div>
+              <div className="flex space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep(1)}
+                  className="flex-1"
+                  disabled={loading}
+                >
+                  Kembali
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Verifying...
+                    </>
+                  ) : (
+                    "Verifikasi"
+                  )}
+                </Button>
+              </div>
+            </form>
+          )}
 
-            <button
-              onClick={resetForm}
-              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 px-4 rounded-lg font-medium hover:from-amber-600 hover:to-orange-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 transition-all duration-200"
-            >
-              Daftar Akun Baru
-            </button>
-          </div>
-        )}
-      </div>
+          {/* Step 3: Set PIN */}
+          {step === 3 && (
+            <form onSubmit={handlePinSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-center">PIN (6 digit)</Label>
+                <div className="flex justify-center">
+                  <InputOTP
+                    maxLength={6}
+                    value={pinCode}
+                    onChange={(value) => setPinCode(value)}
+                    disabled={loading}
+                    data-slot="password"
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                      <InputOTPSlot index={4} />
+                      <InputOTPSlot index={5} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  Masukkan PIN 6 digit untuk keamanan akun
+                </p>
+              </div>
+              {accountCode && (
+                <Alert>
+                  <AlertDescription>
+                    <span className="font-medium">Account Code:</span>{" "}
+                    {accountCode}
+                  </AlertDescription>
+                </Alert>
+              )}
+              <div className="flex space-x-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setStep(2)}
+                  className="flex-1"
+                  disabled={loading}
+                >
+                  Kembali
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Setting PIN...
+                    </>
+                  ) : (
+                    "Set PIN"
+                  )}
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {/* Step 4: Success */}
+          {step === 4 && success && (
+            <div className="text-center space-y-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <span className="text-green-600 text-2xl">✓</span>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold mb-2">
+                  Registrasi Berhasil!
+                </h3>
+                <p className="text-muted-foreground">
+                  Akun Tomoro berhasil dibuat
+                </p>
+              </div>
+
+              <Card className="text-left">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Detail Akun:</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Phone:</span>
+                    <span className="font-mono">+62{success.phoneNum}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">PIN:</span>
+                    <span className="font-mono">{success.pin}</span>
+                  </div>
+                  {success.accountCode && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Account Code:
+                      </span>
+                      <span className="font-mono">{success.accountCode}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Timestamp:</span>
+                    <span className="font-mono">{success.timestamp}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Button
+                onClick={resetForm}
+                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+              >
+                Daftar Akun Baru
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
