@@ -44,13 +44,24 @@ export async function POST(request: NextRequest) {
         8
       )}...`
     );
+    console.log(`OTP Code received: "${otpCode}" (length: ${otpCode.length})`);
+    console.log(`wToken: ${wToken.substring(0, 20)}...`);
+    console.log(`User-Agent: ${userAgent}`);
 
     const requestBody = {
+      phoneArea: "62",
       phone: phoneNum,
-      areaCode: "62",
-      code: otpCode,
-      verifyChannel: "SMS",
+      verifyCode: otpCode,
+      language: "id",
+      deviceCode: "1",
+      deviceName: "1",
+      channel: "google play",
+      revision: "3.0.0",
+      type: 2,
+      source: "563ZYE",
     };
+
+    console.log("Request body:", JSON.stringify(requestBody, null, 2));
 
     const response = await fetch(
       "https://api-service.tomoro-coffee.id/portal/app/member/loginOrRegister",
@@ -62,6 +73,9 @@ export async function POST(request: NextRequest) {
     );
 
     const data = await response.json();
+
+    console.log("API Response Status:", response.status);
+    console.log("API Response Data:", JSON.stringify(data, null, 2));
 
     if (!response.ok) {
       console.error("Login/Register API Error:", data);

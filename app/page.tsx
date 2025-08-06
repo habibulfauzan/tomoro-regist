@@ -179,6 +179,19 @@ export default function TomoroRegister() {
     setLoading(true);
     setError("");
 
+    // console.log("🔄 Auto OTP Submit - Attempting login with:");
+    // console.log(`- Phone: ${phoneNum}`);
+    // console.log(`- OTP: "${otpCode}" (length: ${otpCode.length})`);
+    // console.log(
+    //   `- Device: ${
+    //     deviceCode ? deviceCode.substring(0, 8) + "..." : "undefined"
+    //   }`
+    // );
+    // console.log(
+    //   `- wToken: ${wToken ? wToken.substring(0, 20) + "..." : "undefined"}`
+    // );
+    // console.log(`- User-Agent: ${userAgent || "undefined"}`);
+
     try {
       const result = await loginOrRegister(
         phoneNum,
@@ -291,6 +304,12 @@ export default function TomoroRegister() {
       setDeviceCode(result.deviceCode);
       setWToken(result.wToken);
       setUserAgent(result.userAgent);
+
+      // console.log("✅ Session parameters stored:");
+      // console.log(`- Device: ${result.deviceCode.substring(0, 8)}...`);
+      // console.log(`- wToken: ${result.wToken.substring(0, 20)}...`);
+      // console.log(`- User-Agent: ${result.userAgent}`);
+
       setStep(2);
     } catch (error) {
       console.error("OTP Error:", error);
@@ -309,6 +328,19 @@ export default function TomoroRegister() {
 
     setLoading(true);
     setError("");
+
+    // console.log("🔄 Manual OTP Submit - Attempting login with:");
+    // console.log(`- Phone: ${phoneNum}`);
+    // console.log(`- OTP: "${otpCode}" (length: ${otpCode.length})`);
+    // console.log(
+    //   `- Device: ${
+    //     deviceCode ? deviceCode.substring(0, 8) + "..." : "undefined"
+    //   }`
+    // );
+    // console.log(
+    //   `- wToken: ${wToken ? wToken.substring(0, 20) + "..." : "undefined"}`
+    // );
+    // console.log(`- User-Agent: ${userAgent || "undefined"}`);
 
     try {
       const result = await loginOrRegister(
@@ -411,11 +443,18 @@ export default function TomoroRegister() {
     setPinCode("");
     setError("");
     setSuccess(null);
-    setDeviceCode("");
-    setWToken("");
-    setUserAgent("");
     setToken("");
     setAccountCode("");
+
+    // Generate new session parameters like page refresh
+    const newDeviceCode = generateRandomString();
+    setDeviceCode(newDeviceCode);
+    setWToken("");
+    setUserAgent("");
+
+    // console.log("🔄 New session started:");
+    // console.log(`- New Device: ${newDeviceCode.substring(0, 8)}...`);
+    // console.log("- wToken & User-Agent will be generated on next OTP request");
   };
 
   return (
@@ -426,13 +465,11 @@ export default function TomoroRegister() {
             Tomoro Register
           </h1>
           {/* <p className="text-gray-600">Daftar akun baru dengan mudah</p> */}
-          {/* {
-            deviceCode&& (
-              <div className="mt-4 text-sm text-gray-500">
-                Device Code: <span className="font-mono">{deviceCode}</span>
-              </div>
-            )
-          } */}
+          {deviceCode && (
+            <div className="mt-4 text-sm text-gray-500">
+              Device Code: <span className="font-mono">{deviceCode}</span>
+            </div>
+          )}
           {/* {config.invitationCode && (
             <div className="text-sm text-green-600">
               Invitation Code:{" "}
