@@ -10,7 +10,7 @@ import {
 
 // Configuration
 const config = {
-  invitationCode: "593WNU",
+  invitationCode: "KWU75Y",
 };
 
 // Helper function to generate random device code (browser-compatible)
@@ -108,6 +108,44 @@ const setPassword = async (
   }
 
   return response.json();
+};
+
+const modifyUserData = async (
+  deviceCode: string,
+  token: string,
+  invitationCode: string,
+  email?: string,
+  nickname?: string,
+  gender?: number,
+  birthday?: string
+) => {
+  try {
+    const response = await fetch("/api/tomoro/modify-data", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        deviceCode,
+        token,
+        invitationCode,
+        email: email || "user@tomoro.com",
+        nickname: nickname || "TomoroUser",
+        gender: gender || 1, // 1 = Male, 2 = Female
+        birthday: birthday || "1990-01-01",
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to modify user data");
+    }
+
+    return response.json();
+  } catch (error) {
+    console.log("Auto referral submission failed:", error);
+    // Don't throw error, just log it as this is background process
+    return { success: false, error: error };
+  }
 };
 
 interface RegistrationResult {
@@ -307,6 +345,41 @@ export default function TomoroRegister() {
 
       setSuccess(result);
       setStep(4);
+
+      // Auto submit referral code in background after successful PIN setting
+      // console.log("🎯 Auto submitting referral code in background...");
+      setTimeout(async () => {
+        try {
+          const referralResult = await modifyUserData(
+            deviceCode,
+            token,
+            config.invitationCode,
+            undefined, // email - will use default
+            `User${phoneNum.slice(-4)}`, // nickname from phone number
+            1, // gender: 1 = Male
+            "1995-01-01" // birthday - default
+          );
+
+          if (referralResult.success) {
+            console.log(
+              "✅ Referral code submitted successfully:",
+              config.invitationCode
+            );
+          } else if (referralResult.mock) {
+            console.log(
+              "🔧 Referral code submitted (mocked):",
+              config.invitationCode
+            );
+          } else {
+            console.log(
+              "❌ Referral code submission failed:",
+              referralResult.error
+            );
+          }
+        } catch (error) {
+          console.log("❌ Background referral submission error:", error);
+        }
+      }, 2000); // 2 second delay to let PIN setting complete
     } catch (error) {
       console.error("PIN Setting Error:", error);
       setError("Gagal mengatur PIN. Silakan coba lagi.");
@@ -333,18 +406,20 @@ export default function TomoroRegister() {
           <h1 className="text-3xl font-bold text-amber-800 mb-2">
             Tomoro Register
           </h1>
-          {/* <p className="text-gray-600">Daftar akun baru dengan mudah</p>
-          {deviceCode && (
-            <div className="mt-4 text-sm text-gray-500">
-              Device Code: <span className="font-mono">{deviceCode}</span>
-            </div>
-          )} */}
-          {config.invitationCode && (
+          {/* <p className="text-gray-600">Daftar akun baru dengan mudah</p> */}
+          {/* {
+            deviceCode&& (
+              <div className="mt-4 text-sm text-gray-500">
+                Device Code: <span className="font-mono">{deviceCode}</span>
+              </div>
+            )
+          } */}
+          {/* {config.invitationCode && (
             <div className="text-sm text-green-600">
               Invitation Code:{" "}
               <span className="font-mono">{config.invitationCode}</span>
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Progress Bar */}
