@@ -4,7 +4,7 @@ import proxyManager from "../../../src/proxy-manager";
 // Request queue to manage delays between requests
 let requestQueue: Array<{ timestamp: number; deviceCode: string }> = [];
 const MIN_REQUEST_DELAY = 2000; // 2 seconds between requests
-const MAX_REQUESTS_PER_HOUR = 10;
+const MAX_REQUESTS_PER_HOUR = 100;
 
 // Generate random device code to bypass rate limiting
 const generateRandomDeviceCode = (): string => {

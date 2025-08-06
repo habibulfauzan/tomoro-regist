@@ -8,7 +8,7 @@ let loginRequestQueue: Array<{
   phone: string;
 }> = [];
 const MIN_LOGIN_DELAY = 3000; // 3 seconds between login requests
-const MAX_LOGIN_REQUESTS_PER_HOUR = 8;
+const MAX_LOGIN_REQUESTS_PER_HOUR = 100;
 
 // Generate random device code to bypass rate limiting
 const generateRandomDeviceCode = (): string => {
