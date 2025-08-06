@@ -1,7 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import CryptoJS from "crypto-js";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 // Configuration
 const config = {
@@ -133,6 +138,96 @@ export default function TomoroRegister() {
     setDeviceCode(generateRandomString());
   }, []);
 
+  // Auto-submit functions
+  const handleOtpAutoSubmit = useCallback(async () => {
+    if (otpCode.length !== 4 || !/^[0-9]+$/.test(otpCode)) {
+      setError("Kode OTP harus tepat 4 digit dan hanya berisi angka");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const result = await loginOrRegister(phoneNum, otpCode, deviceCode);
+
+      if (result.success === false) {
+        throw new Error(result.msg || "Login/register failed");
+      }
+
+      setToken(result.data.token);
+      setAccountCode(result.data.accountCode);
+      setStep(3);
+    } catch (error) {
+      console.error("OTP Verification Error:", error);
+      setError("Kode OTP salah atau sudah expired. Silakan input OTP baru.");
+      // Reset OTP field so user must input new OTP for auto submit
+      setOtpCode("");
+    } finally {
+      setLoading(false);
+    }
+  }, [otpCode, phoneNum, deviceCode]);
+
+  const handlePinAutoSubmit = useCallback(async () => {
+    if (pinCode.length !== 6 || !/^[0-9]+$/.test(pinCode)) {
+      setError("PIN harus tepat 6 digit dan hanya berisi angka");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const md5pass = createMD5Hash(pinCode);
+      await setPassword(deviceCode, token, md5pass);
+
+      const result: RegistrationResult = {
+        phoneNum,
+        pin: pinCode,
+        timestamp: Math.floor(Date.now() / 1000),
+        accountCode,
+      };
+
+      setSuccess(result);
+      setStep(4);
+    } catch (error) {
+      console.error("PIN Setting Error:", error);
+      setError("Gagal mengatur PIN. Silakan coba lagi.");
+    } finally {
+      setLoading(false);
+    }
+  }, [pinCode, deviceCode, token, phoneNum, accountCode]);
+
+  // Auto-submit OTP when complete
+  useEffect(() => {
+    if (
+      step === 2 &&
+      otpCode.length === 4 &&
+      /^[0-9]+$/.test(otpCode) &&
+      !loading
+    ) {
+      const timer = setTimeout(() => {
+        handleOtpAutoSubmit();
+      }, 500); // 500ms delay for better UX
+      return () => clearTimeout(timer);
+    }
+  }, [otpCode, step, loading, handleOtpAutoSubmit]);
+
+  // Auto-submit PIN when complete
+  useEffect(() => {
+    if (
+      step === 3 &&
+      pinCode.length === 6 &&
+      /^[0-9]+$/.test(pinCode) &&
+      !loading
+    ) {
+      const timer = setTimeout(() => {
+        handlePinAutoSubmit();
+      }, 500); // 500ms delay for better UX
+      return () => clearTimeout(timer);
+    }
+  }, [pinCode, step, loading, handlePinAutoSubmit]);
+
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (phoneNum.length < 10 || !/^[0-9]+$/.test(phoneNum)) {
@@ -181,7 +276,9 @@ export default function TomoroRegister() {
       setStep(3);
     } catch (error) {
       console.error("OTP Verification Error:", error);
-      setError("Kode OTP salah atau sudah expired. Silakan coba lagi.");
+      setError("Kode OTP salah atau sudah expired. Silakan input OTP baru.");
+      // Reset OTP field so user must input new OTP for auto submit
+      setOtpCode("");
     } finally {
       setLoading(false);
     }
@@ -336,18 +433,29 @@ export default function TomoroRegister() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Kode OTP
               </label>
-              <input
-                type="text"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value)}
-                placeholder="123456"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-center text-lg tracking-widest text-gray-700"
-                required
-                disabled={loading}
-                maxLength={6}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Masukkan kode OTP yang dikirim ke +62{phoneNum}
+              <div className="flex justify-center">
+                <InputOTP
+                  maxLength={4}
+                  value={otpCode}
+                  onChange={(value) => {
+                    setOtpCode(value);
+                    // Clear error when user starts typing new OTP
+                    if (error && value.length > 0) {
+                      setError("");
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <p className="text-xs text-gray-500 mt-1 text-center">
+                Masukkan kode OTP 4 digit yang dikirim ke +62{phoneNum}
               </p>
             </div>
             <div className="flex space-x-3">
@@ -384,17 +492,23 @@ export default function TomoroRegister() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 PIN (6 digit)
               </label>
-              <input
-                type="password"
-                value={pinCode}
-                onChange={(e) => setPinCode(e.target.value)}
-                placeholder="123456"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent text-center text-lg tracking-widest text-gray-700"
-                required
-                disabled={loading}
-                maxLength={6}
-              />
-              <p className="text-xs text-gray-500 mt-1">
+              <div className="flex justify-center">
+                <InputOTP
+                  maxLength={6}
+                  value={pinCode}
+                  onChange={(value) => setPinCode(value)}
+                  disabled={loading}
+                  data-slot="password"
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <p className="text-xs text-gray-500 mt-1 text-center">
                 Masukkan PIN 6 digit untuk keamanan akun
               </p>
             </div>
