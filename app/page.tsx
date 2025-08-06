@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Check, Copy } from "lucide-react";
 
 // Configuration
 const config = {
@@ -207,6 +208,7 @@ export default function TomoroRegister() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState<RegistrationResult | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
 
   // Form data
   const [phoneNum, setPhoneNum] = useState("");
@@ -548,6 +550,32 @@ export default function TomoroRegister() {
     }
   };
 
+  const handleCopy = async () => {
+    // 1. Membuat teks yang akan disalin dengan cara yang lebih rapi
+    const lines = [`Phone: +62${success?.phoneNum}`, `PIN: ${success?.pin}`];
+
+    if (success?.accountCode) {
+      lines.push(`Account Code: ${success?.accountCode}`);
+    }
+
+    lines.push(`Timestamp: ${success?.timestamp}`);
+
+    const details = lines.join("\n");
+
+    // 2. Menggunakan async/await untuk menyalin ke clipboard
+    try {
+      await navigator.clipboard.writeText(details);
+      setIsCopied(true); // 3. Update state, bukan DOM langsung
+
+      // Reset ikon/teks setelah 2 detik
+      setTimeout(() => {
+        setIsCopied(false);
+      }, 2000);
+    } catch (err) {
+      console.error("Gagal menyalin: ", err);
+    }
+  };
+
   const resetForm = () => {
     setStep(1);
     setPhoneNum("");
@@ -557,6 +585,7 @@ export default function TomoroRegister() {
     setSuccess(null);
     setToken("");
     setAccountCode("");
+    setIsCopied(false);
 
     // Generate new session parameters like page refresh
     const newDeviceCode = generateRandomString();
@@ -570,15 +599,16 @@ export default function TomoroRegister() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-2xl">
+    <div className="min-h-screen bg-slate-950 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.3),rgba(255,255,255,0))] flex items-center justify-center p-4">
+      <Card className="w-full max-w-md backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl">
         <CardHeader className="text-center pb-6">
-          <CardTitle className="text-3xl font-bold text-amber-800">
-            T****o Auto Register
+          <CardTitle className="text-3xl font-bold text-white">
+            T****O Auto Register
           </CardTitle>
           {deviceCode && (
-            <div className="mt-4 text-sm text-gray-500">
-              Device Code: <span className="font-mono">{deviceCode}</span>
+            <div className="mt-4 text-sm text-white/70">
+              Device Code:{" "}
+              <span className="font-mono text-white/90">{deviceCode}</span>
             </div>
           )}
         </CardHeader>
@@ -586,23 +616,23 @@ export default function TomoroRegister() {
         <CardContent className="space-y-6">
           {/* Progress Bar */}
           <div className="space-y-3">
-            <div className="flex justify-between items-center text-sm text-muted-foreground">
-              <span className={step >= 1 ? "text-amber-600 font-medium" : ""}>
+            <div className="flex justify-between items-center text-sm text-white/50">
+              <span className={step >= 1 ? "text-white font-medium" : ""}>
                 Phone
               </span>
-              <span className={step >= 2 ? "text-amber-600 font-medium" : ""}>
+              <span className={step >= 2 ? "text-white font-medium" : ""}>
                 OTP
               </span>
-              <span className={step >= 3 ? "text-amber-600 font-medium" : ""}>
+              <span className={step >= 3 ? "text-white font-medium" : ""}>
                 PIN
               </span>
-              <span className={step >= 4 ? "text-green-600 font-medium" : ""}>
+              <span className={step >= 4 ? "text-emerald-400 font-medium" : ""}>
                 Done
               </span>
             </div>
             <Progress
               value={(step / 4) * 100}
-              className="w-full [&>div]:bg-gradient-to-r [&>div]:from-amber-500 [&>div]:to-orange-500 bg-amber-100"
+              className="w-full bg-white/20 [&>div]:bg-gradient-to-r [&>div]:from-indigo-400 [&>div]:to-purple-400"
             />
           </div>
 
@@ -616,9 +646,11 @@ export default function TomoroRegister() {
           {step === 1 && (
             <form onSubmit={handlePhoneSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="phone">Nomor Telepon</Label>
+                <Label htmlFor="phone" className="text-white/90 font-medium">
+                  Nomor Telepon
+                </Label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-white/60">
                     +62
                   </span>
                   <Input
@@ -627,19 +659,19 @@ export default function TomoroRegister() {
                     value={phoneNum}
                     onChange={(e) => setPhoneNum(e.target.value)}
                     placeholder="8123456789"
-                    className="pl-12"
+                    className="pl-12 bg-white/10 border border-white/30 text-white placeholder:text-white/50 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20 transition-all duration-300"
                     required
                     disabled={loading}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-white/60">
                   Masukkan nomor tanpa awalan 62
                 </p>
               </div>
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                className="w-full bg-white/20 backdrop-blur border-0 text-white hover:bg-white/30 transition-all duration-300"
               >
                 {loading ? (
                   <>
@@ -657,9 +689,12 @@ export default function TomoroRegister() {
           {step === 2 && (
             <form onSubmit={handleOtpSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-center">Kode OTP</Label>
+                <Label className="text-center font-medium text-white/90">
+                  Kode OTP
+                </Label>
                 <div className="flex justify-center">
                   <InputOTP
+                    className="text-white/90"
                     maxLength={4}
                     value={otpCode}
                     onChange={(value) => {
@@ -671,7 +706,7 @@ export default function TomoroRegister() {
                     }}
                     disabled={loading}
                   >
-                    <InputOTPGroup>
+                    <InputOTPGroup className="text-white/90">
                       <InputOTPSlot index={0} />
                       <InputOTPSlot index={1} />
                       <InputOTPSlot index={2} />
@@ -679,7 +714,7 @@ export default function TomoroRegister() {
                     </InputOTPGroup>
                   </InputOTP>
                 </div>
-                <p className="text-xs text-muted-foreground text-center">
+                <p className="text-xs text-white/60 text-center">
                   Masukkan kode OTP 4 digit yang dikirim ke +62{phoneNum}
                 </p>
               </div>
@@ -688,7 +723,7 @@ export default function TomoroRegister() {
                   type="button"
                   variant="outline"
                   onClick={() => setStep(1)}
-                  className="flex-1"
+                  className="flex-1 border-white/30 text-purple-800/90 hover:bg-white/10 hover:text-white"
                   disabled={loading}
                 >
                   Kembali
@@ -696,7 +731,7 @@ export default function TomoroRegister() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                  className="flex-1 bg-white/20 backdrop-blur border-0 text-white hover:bg-white/30 transition-all duration-300"
                 >
                   {loading ? (
                     <>
@@ -715,16 +750,19 @@ export default function TomoroRegister() {
           {step === 3 && (
             <form onSubmit={handlePinSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-center">PIN (6 digit)</Label>
+                <Label className="text-center font-medium text-white/90">
+                  PIN (6 digit)
+                </Label>
                 <div className="flex justify-center">
                   <InputOTP
+                    className="text-white/90"
                     maxLength={6}
                     value={pinCode}
                     onChange={(value) => setPinCode(value)}
                     disabled={loading}
                     data-slot="password"
                   >
-                    <InputOTPGroup>
+                    <InputOTPGroup className="text-white/90">
                       <InputOTPSlot index={0} />
                       <InputOTPSlot index={1} />
                       <InputOTPSlot index={2} />
@@ -734,13 +772,13 @@ export default function TomoroRegister() {
                     </InputOTPGroup>
                   </InputOTP>
                 </div>
-                <p className="text-xs text-muted-foreground text-center">
+                <p className="text-xs text-white/60 text-center">
                   Masukkan PIN 6 digit untuk keamanan akun
                 </p>
               </div>
               {accountCode && (
-                <Alert>
-                  <AlertDescription>
+                <Alert className="bg-white/10 border-white/30 backdrop-blur">
+                  <AlertDescription className="text-white/90">
                     <span className="font-medium">Account Code:</span>{" "}
                     {accountCode}
                   </AlertDescription>
@@ -751,7 +789,7 @@ export default function TomoroRegister() {
                   type="button"
                   variant="outline"
                   onClick={() => setStep(2)}
-                  className="flex-1"
+                  className="flex-1 border-white/30 text-purple-800/90 hover:bg-white/10 hover:text-white"
                   disabled={loading}
                 >
                   Kembali
@@ -759,7 +797,7 @@ export default function TomoroRegister() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                  className="flex-1 bg-white/20 backdrop-blur border-0 text-white hover:bg-white/30 transition-all duration-300"
                 >
                   {loading ? (
                     <>
@@ -777,51 +815,68 @@ export default function TomoroRegister() {
           {/* Step 4: Success */}
           {step === 4 && success && (
             <div className="text-center space-y-6">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <span className="text-green-600 text-2xl">✓</span>
+              <div className="w-20 h-20 bg-white/20 backdrop-blur rounded-full flex items-center justify-center mx-auto shadow-lg">
+                <span className="text-emerald-400 text-3xl font-bold">✓</span>
               </div>
               <div>
-                <h3 className="text-xl font-semibold mb-2">
+                <h3 className="text-xl font-semibold mb-2 text-white">
                   Registrasi Berhasil!
                 </h3>
-                <p className="text-muted-foreground">
-                  Akun Tomoro berhasil dibuat
-                </p>
+                <p className="text-white/70">Akun Tomoro berhasil dibuat</p>
               </div>
 
-              <Card className="text-left">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Detail Akun:</CardTitle>
+              <Card className="text-left border border-white/30 bg-white/10 backdrop-blur">
+                <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                  <CardTitle className="text-base text-white/90">
+                    Detail Akun:
+                  </CardTitle>
+                  <Button
+                    onClick={handleCopy}
+                    size="sm"
+                    className="bg-white/10 hover:bg-white/20 border-white/30 text-white/90 p-2 h-8 w-8"
+                  >
+                    {isCopied ? (
+                      <Check className="h-3 w-3 text-green-400" />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Phone:</span>
-                    <span className="font-mono">+62{success.phoneNum}</span>
+                    <span className="text-white/60">Phone:</span>
+                    <span className="font-mono text-white/90">
+                      +62{success.phoneNum}
+                    </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">PIN:</span>
-                    <span className="font-mono">{success.pin}</span>
+                    <span className="text-white/60">PIN:</span>
+                    <span className="font-mono text-white/90">
+                      {success.pin}
+                    </span>
                   </div>
                   {success.accountCode && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">
-                        Account Code:
+                      <span className="text-white/60">Account Code:</span>
+                      <span className="font-mono text-white/90">
+                        {success.accountCode}
                       </span>
-                      <span className="font-mono">{success.accountCode}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Timestamp:</span>
-                    <span className="font-mono">{success.timestamp}</span>
+                    <span className="text-white/60">Timestamp:</span>
+                    <span className="font-mono text-white/90">
+                      {success.timestamp}
+                    </span>
                   </div>
                 </CardContent>
               </Card>
 
               <Button
                 onClick={resetForm}
-                className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600"
+                className="w-full bg-white/20 backdrop-blur border-0 text-white hover:bg-white/30 transition-all duration-300"
               >
-                Daftar Akun Baru
+                🔄 Daftar Akun Baru
               </Button>
             </div>
           )}
