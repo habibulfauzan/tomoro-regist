@@ -33,18 +33,9 @@ const createMD5Hash = (input: string): string => {
 };
 
 // API functions
-const sendOtp = async (phoneNum: string, deviceCode: string) => {
-  const response = await fetch("/api/tomoro/send-otp", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      phone: phoneNum,
-      areaCode: "62",
-      verifyChannel: "SMS",
-      deviceCode,
-    }),
+const sendOtp = async (phoneNum: string) => {
+  const response = await fetch(`/api/tomoro/send-otp?phone=${phoneNum}`, {
+    method: "GET",
   });
 
   if (!response.ok) {
@@ -56,8 +47,10 @@ const sendOtp = async (phoneNum: string, deviceCode: string) => {
 
 const loginOrRegister = async (
   phoneNum: string,
-  verifyCode: string,
-  deviceCode: string
+  otpCode: string,
+  deviceCode: string,
+  wToken: string,
+  userAgent: string
 ) => {
   const response = await fetch("/api/tomoro/login-register", {
     method: "POST",
@@ -65,17 +58,11 @@ const loginOrRegister = async (
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      phoneArea: "62",
-      phone: phoneNum,
-      verifyCode: verifyCode,
-      language: "id",
-      deviceCode: "1",
-      deviceName: "1",
-      channel: "google play",
-      revision: "3.0.0",
-      type: 2,
-      source: "563ZYE",
-      deviceCodeHeader: deviceCode,
+      phoneNum,
+      otpCode,
+      deviceCode,
+      wToken,
+      userAgent,
     }),
   });
 
@@ -113,6 +100,8 @@ const setPassword = async (
 const modifyUserData = async (
   deviceCode: string,
   token: string,
+  wToken: string,
+  userAgent: string,
   invitationCode: string,
   email?: string,
   nickname?: string,
@@ -128,6 +117,8 @@ const modifyUserData = async (
       body: JSON.stringify({
         deviceCode,
         token,
+        wToken,
+        userAgent,
         invitationCode,
         email: email || "user@tomoro.com",
         nickname: nickname || "TomoroUser",
@@ -168,6 +159,8 @@ export default function TomoroRegister() {
 
   // Registration data
   const [deviceCode, setDeviceCode] = useState("");
+  const [wToken, setWToken] = useState("");
+  const [userAgent, setUserAgent] = useState("");
   const [token, setToken] = useState("");
   const [accountCode, setAccountCode] = useState("");
 
@@ -187,7 +180,13 @@ export default function TomoroRegister() {
     setError("");
 
     try {
-      const result = await loginOrRegister(phoneNum, otpCode, deviceCode);
+      const result = await loginOrRegister(
+        phoneNum,
+        otpCode,
+        deviceCode,
+        wToken,
+        userAgent
+      );
 
       if (result.success === false) {
         throw new Error(result.msg || "Login/register failed");
@@ -204,7 +203,7 @@ export default function TomoroRegister() {
     } finally {
       setLoading(false);
     }
-  }, [otpCode, phoneNum, deviceCode]);
+  }, [otpCode, phoneNum, deviceCode, wToken, userAgent]);
 
   const handlePinAutoSubmit = useCallback(async () => {
     if (pinCode.length !== 6 || !/^[0-9]+$/.test(pinCode)) {
@@ -282,7 +281,16 @@ export default function TomoroRegister() {
     setError("");
 
     try {
-      await sendOtp(phoneNum, deviceCode);
+      const result = await sendOtp(phoneNum);
+
+      if (result.success === false) {
+        throw new Error(result.msg || "Failed to send OTP");
+      }
+
+      // Store session identifiers for consistent flow
+      setDeviceCode(result.deviceCode);
+      setWToken(result.wToken);
+      setUserAgent(result.userAgent);
       setStep(2);
     } catch (error) {
       console.error("OTP Error:", error);
@@ -303,7 +311,13 @@ export default function TomoroRegister() {
     setError("");
 
     try {
-      const result = await loginOrRegister(phoneNum, otpCode, deviceCode);
+      const result = await loginOrRegister(
+        phoneNum,
+        otpCode,
+        deviceCode,
+        wToken,
+        userAgent
+      );
 
       if (result.success === false) {
         throw new Error(result.msg || "Login/register failed");
@@ -353,6 +367,8 @@ export default function TomoroRegister() {
           const referralResult = await modifyUserData(
             deviceCode,
             token,
+            wToken,
+            userAgent,
             config.invitationCode,
             undefined, // email - will use default
             `User${phoneNum.slice(-4)}`, // nickname from phone number
@@ -395,6 +411,9 @@ export default function TomoroRegister() {
     setPinCode("");
     setError("");
     setSuccess(null);
+    setDeviceCode("");
+    setWToken("");
+    setUserAgent("");
     setToken("");
     setAccountCode("");
   };
